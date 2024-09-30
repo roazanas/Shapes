@@ -1,4 +1,4 @@
-using DG.Tweening; 
+using DG.Tweening;
 using UnityEngine;
 
 public class CameraController : MonoBehaviour
@@ -22,6 +22,9 @@ public class CameraController : MonoBehaviour
     private float bottomBoundary = -4.75f;
     private float topBoundary = 4.75f;
 
+    private Vector3 cachedCameraPos;
+    private float cachedZoomLevel;
+
     private void Start()
     {
         if (player == null) { return; }
@@ -31,6 +34,9 @@ public class CameraController : MonoBehaviour
         cam = Camera.main;
         originalCameraSize = cam.orthographicSize;
 
+        cachedCameraPos = transform.position;
+        cachedZoomLevel = cam.orthographicSize;
+
         DOTween.SetTweensCapacity(3500, 75);
     }
 
@@ -39,13 +45,15 @@ public class CameraController : MonoBehaviour
         if (playerCollider == null) { return; }
 
         Vector2 mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        Vector2 targetPosition = (Vector2)player.transform.position + 
-            (mousePosition - (Vector2)player.transform.position) * mouseImpact + 
+        Vector2 targetPosition = (Vector2)player.transform.position +
+            (mousePosition - (Vector2)player.transform.position) * mouseImpact +
             cameraOffset;
 
         Vector2 smoothedPosition = CalculateClampedPosition(targetPosition);
 
-        transform.DOMove(smoothedPosition, smoothDuration).SetEase(Ease.InOutSine);
+        Vector3 newPosition = Vector3.Lerp(cachedCameraPos, smoothedPosition, Time.deltaTime / smoothDuration);
+        cachedCameraPos = newPosition;
+        transform.position = cachedCameraPos;
 
         HandleCameraZoom();
     }
@@ -54,7 +62,7 @@ public class CameraController : MonoBehaviour
     {
         float playerPosX = player.transform.position.x;
         float playerPosY = player.transform.position.y;
-        
+
         float clampX = Mathf.Clamp(targetPosition.x, leftBoundary + playerPosX, rightBoundary + playerPosX);
         float clampY = Mathf.Clamp(targetPosition.y, bottomBoundary + playerPosY, topBoundary + playerPosY);
 
@@ -63,17 +71,19 @@ public class CameraController : MonoBehaviour
 
     private void HandleCameraZoom()
     {
+        float targetSize = originalCameraSize;
+
         if (playerController != null && playerController.isDashing)
         {
-            cam.DOOrthoSize(originalCameraSize + zoomOutAmount, zoomOutDuration);
+            targetSize = originalCameraSize + zoomOutAmount;
         }
         else if (playerController != null && playerHDController.isShocked)
         {
-            cam.DOOrthoSize(originalCameraSize + zoomOutAmount * 3f, zoomOutDuration / 2f);
+            targetSize = originalCameraSize + zoomOutAmount * 3f;
         }
-        else
-        {
-            cam.DOOrthoSize(originalCameraSize, zoomOutDuration * 2f);
-        }
+
+        float newZoomLevel = Mathf.Lerp(cachedZoomLevel, targetSize, Time.deltaTime / zoomOutDuration);
+        cachedZoomLevel = newZoomLevel;
+        cam.orthographicSize = cachedZoomLevel;
     }
 }

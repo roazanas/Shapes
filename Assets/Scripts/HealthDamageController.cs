@@ -69,7 +69,7 @@ public class HealthDamageController : MonoBehaviour
     {
         if (healthBar == null || slider == null) { return; }
 
-        Tween anim = slider.DOValue(currentHealth, 0.1f).SetEase(Ease.OutQuad);
+        Tween anim = slider.DOValue(currentHealth, 0.1f).SetEase(Ease.OutQuad).SetLink(gameObject);
         if (isDeath)
             anim.OnComplete(Die);
     }
@@ -79,13 +79,6 @@ public class HealthDamageController : MonoBehaviour
     { 
         if (healthBar != null) { Destroy(healthBar); }
         if (gameObject != null) { Destroy(gameObject); }
-    }
-
-    private void OnDestroy()
-    {
-        DOTween.Kill(gameObject);
-        DOTween.Kill(healthBar);
-        DOTween.Kill(slider);
     }
 
     public void TakeDamage(float damage, Vector2 direction) 
@@ -98,6 +91,9 @@ public class HealthDamageController : MonoBehaviour
             return;
         }
         UpdateHealthBar();
+        body.velocity = Vector2.zero;
+        body.AddForce(direction * 10f * body.mass, ForceMode2D.Impulse);
+        body.AddTorque(40f * body.mass * (Random.value >= 0.5f ? -Random.value - 0.5f : Random.value + 0.5f));
         if (direction != Vector2.zero && Random.Range(1, 100) <= shockChancePercent)
         {
             GetShocked(direction);
@@ -114,8 +110,8 @@ public class HealthDamageController : MonoBehaviour
         shockTimeLeft = shockDuration + salt;
 
         body.velocity = Vector2.zero;
-        body.AddForce(direction * power, ForceMode2D.Impulse);
-        body.AddTorque(power * 4 * (Random.value >= 0.5f ? -Random.value - 0.5f : Random.value + 0.5f));
+        body.AddForce(direction * power * body.mass, ForceMode2D.Impulse);
+        body.AddTorque(power * 8 * body.mass * (Random.value >= 0.5f ? -Random.value - 0.5f : Random.value + 0.5f));
 
         for (int i = 1; i < HBImages.Length-1; i++)
         {
@@ -124,13 +120,15 @@ public class HealthDamageController : MonoBehaviour
             HBImages[i].DOColor(new UnityEngine.Color(242f / 255f, 211f / 255f, 97f / 255f),
                 shockDuration / 2f)
                 .SetEase(Ease.OutFlash)
-                .SetId("HealthBarColorChange");
+                .SetId("HealthBarColorChange")
+                .SetLink(gameObject);
         }
         if (sprite == null) { return; }
         sprite.DOFade(0.25f, (shockDuration + salt) / 8f)
               .SetLoops(-1, LoopType.Yoyo)
               .SetEase(Ease.InOutSine)
-              .SetId("ObjectFlick");
+              .SetId("ObjectFlick")
+              .SetLink(gameObject);
     }
 
     private void EndShock()
@@ -143,7 +141,8 @@ public class HealthDamageController : MonoBehaviour
             HBImages[i].DOColor(colors[i - 1],
                 shockDuration / 2f)
                 .SetEase(Ease.OutBounce)
-                .SetId("HealthBarColorChange");
+                .SetId("HealthBarColorChange")
+                .SetLink(gameObject);
         }
         DOTween.Kill("ObjectFlick");
     }
